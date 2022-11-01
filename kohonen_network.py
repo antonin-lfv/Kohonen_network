@@ -3,7 +3,7 @@ from shapely.geometry import Point, Polygon
 from plotly.offline import plot
 from fastdist import fastdist
 import plotly.graph_objects as go
-import time
+import random
 
 
 class MyPointClass:
@@ -51,12 +51,16 @@ class SOM:
     :var data_points: list of MyPointClass Object
     :var neuron_points: 1-D numpy array with MyPointClass Object
     :var radius: radius to find neurons'neighbors
+    :var pourcent_distance_closest: how much the closest neuron move to the input
+    :var pourcent_distance_closest_neighbors: how much the neighbors of the closest neuron move to the input
     """
 
     def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = 0.25
+        self.radius = 0.5
+        self.pourcent_distance_closest = 0.8
+        self.pourcent_distance_closest_neighbors = 0.2
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
 
     def __get_polygon_from_shape(self):
@@ -165,24 +169,26 @@ class SOM:
         # first we find the neighbors of the neuron
         indexes = self.get_index_closest_neigbours(index_closest_neuron)
         # We move the closest neuron to the input data with 0.80 of their distance
-        self.neuron_points[index_closest_neuron].move_to(self.data_points[index_input_data], 0.85)
+        self.neuron_points[index_closest_neuron].move_to(self.data_points[index_input_data],
+                                                         self.pourcent_distance_closest)
         # We move the closest neurons of the closest neuron to the input data with 0.4 of their distance
         for indexes_neigh_of_neigh in indexes:
-            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data], 0.25)
+            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data],
+                                                               self.pourcent_distance_closest_neighbors)
 
     def fit(self):
         """
         Run the model
         """
         # We go through the input data
+        random.shuffle(self.data_points)
         for index_input_data, input_data in enumerate(self.data_points):
             # We find the closest neuron of the input data (index)
             index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
             # We move the closest neuron and its neighbours
             self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data)
             # We decrease the radius
-            if index_input_data % (self.number_of_points//25):
-                self.radius *= 0.8
+            self.radius *= 0.97
 
 
 if __name__ == "__main__":
