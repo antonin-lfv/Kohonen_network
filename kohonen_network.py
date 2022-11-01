@@ -3,6 +3,7 @@ from shapely.geometry import Point, Polygon
 from plotly.offline import plot
 from fastdist import fastdist
 import plotly.graph_objects as go
+import time
 
 
 class MyPointClass:
@@ -22,30 +23,40 @@ class MyPointClass:
         :param neurons : neurons' list
         :return: closest neuron index in neurons' list
         """
-        closest_index, closest_distance = 0, fastdist.euclidean(np.array(self.get_coords()),
-                                                                np.array(neurons[0].get_coords))
+        closest_index, closest_distance = 0, fastdist.euclidean(np.array(self.get_coords(), dtype=float),
+                                                                np.array(neurons[0].get_coords(), dtype=float))
         for index, point in enumerate(neurons):
-            if dist := fastdist.euclidean(np.array(self.get_coords()), np.array(point.get_coords)) < closest_distance:
+            if dist := fastdist.euclidean(np.array(self.get_coords(), dtype=float),
+                                          np.array(point.get_coords(), dtype=float)) < closest_distance:
                 closest_index, closest_distance = index, dist
         return closest_index
+
+    def move_to(self, neuron, scale):
+        """
+        Move the point to the neuron
+        :param scale: scale of the movement
+        :param neuron: neuron to move to
+        """
+        self.x += (neuron.x - self.x) * scale
+        self.y += (neuron.y - self.y) * scale
 
 
 class SOM:
     """
     SOM model
-    :param radius: radius to find neurons'neighbors
     :param number_of_points: number of data points to generate
     :param shape: shape of the data, one of ['square', 'triangle', 'random']
 
     :var polygon: Polygon Object, use to create data points
     :var data_points: list of MyPointClass Object
-    :var neuron_points: numpy array of size 5x5 with MyPointClass Object
+    :var neuron_points: 1-D numpy array with MyPointClass Object
+    :var radius: radius to find neurons'neighbors
     """
 
     def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = np.sqrt(number_of_points)/2
+        self.radius = 0.25
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
 
     def __get_polygon_from_shape(self):
@@ -64,10 +75,10 @@ class SOM:
         data_points = self.__Random_Points_in_Polygon(polygon)
         minx, miny, maxx, maxy = polygon.bounds
         mean_x, mean_y = (minx + maxx) / 2, (miny + maxy) / 2
-        step_x, step_y = (maxx - minx) * 0.025, (maxy - miny) * 0.025
-        neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=object),
-                                                np.array(mean_y + 2 * step_y - j * step_y, dtype=object))
-                                   for i in range(5)] for j in range(5)]).flatten()
+        step_x, step_y = (maxx - minx) * 0.08, (maxy - miny) * 0.08
+        neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=float),
+                                                np.array(mean_y + 2 * step_y - j * step_y, dtype=float))
+                                   for i in range(6)] for j in range(6)]).flatten()
         return polygon, data_points, neuron_points
 
     def __Random_Points_in_Polygon(self, polygon):
@@ -102,7 +113,9 @@ class SOM:
         fig = go.Figure()
         # Plot the polygon
         if display_shape:
-            fig.add_scatter(x=xpolygon, y=ypolygon, mode='lines',
+            fig.add_scatter(x=xpolygon,
+                            y=ypolygon,
+                            mode='lines',
                             marker=dict(color='green',
                                         line_width=0.1,
                                         size=1,
@@ -114,14 +127,19 @@ class SOM:
                         mode='markers',
                         marker=dict(color='red',
                                     size=10,
-                                    opacity=0.5),
-                        name="polygon")
+                                    opacity=1),
+                        text=[i for i in range(len(xneuron))],
+                        texttemplate="%{text}",
+                        name="Neurons")
+        # TODO Plot the line between neurons
         # Plot the list of points
-        fig.add_scatter(x=xdata, y=ydata, name="points", mode='markers',
+        fig.add_scatter(x=xdata, y=ydata,
+                        name="Data",
+                        mode='markers',
                         marker=dict(color='blue',
                                     line_width=1.5,
                                     size=10,
-                                    opacity=0.5))
+                                    opacity=0.4))
 
         plot(fig)
 
@@ -130,18 +148,44 @@ class SOM:
         :param index: index of the neuron
         :return: indexes of neurons' closest at max radius distance
         """
-        ...
+        closest_neigbours = []
+        for index_neuron, neuron in enumerate(self.neuron_points):
+            if index_neuron != index:
+                if fastdist.euclidean(np.array(self.neuron_points[index].get_coords(), dtype=float),
+                                      np.array(neuron.get_coords(), dtype=float)) < self.radius:
+                    closest_neigbours.append(index_neuron)
+        return closest_neigbours
 
-    def move_closest_neuron_and_neighbours(self, index):
+    def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data):
         """
         move all neurons concerned
-        :param index: index of the actual closest neuron
+        :param index_input_data: index of the input data
+        :param index_closest_neuron: index of the actual closest neuron
         """
-        ...
+        # first we find the neighbors of the neuron
+        indexes = self.get_index_closest_neigbours(index_closest_neuron)
+        # We move the closest neuron to the input data with 0.80 of their distance
+        self.neuron_points[index_closest_neuron].move_to(self.data_points[index_input_data], 0.85)
+        # We move the closest neurons of the closest neuron to the input data with 0.4 of their distance
+        for indexes_neigh_of_neigh in indexes:
+            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data], 0.25)
 
     def fit(self):
-        for input_data in self.data_points:
-            # On parcourt les données d'entrées
-            # On cherche le neurone le plus proche
-            # On rapproche ce neurone le plus proche de l'input data ainsi que les voisins de ce dernier
-            ...
+        """
+        Run the model
+        """
+        # We go through the input data
+        for index_input_data, input_data in enumerate(self.data_points):
+            # We find the closest neuron of the input data (index)
+            index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
+            # We move the closest neuron and its neighbours
+            self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data)
+            # We decrease the radius
+            if index_input_data % (self.number_of_points//25):
+                self.radius *= 0.8
+
+
+if __name__ == "__main__":
+    som_model = SOM(number_of_points=1000, shape='random')
+    som_model.fit()
+    som_model.display_data()
