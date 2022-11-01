@@ -42,7 +42,7 @@ class SOM:
     :var neuron_points: numpy array of size 5x5 with MyPointClass Object
     """
 
-    def __init__(self, radius: float, number_of_points: int, shape: str = 'square'):
+    def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
         self.radius = np.sqrt(number_of_points)/2
@@ -67,7 +67,7 @@ class SOM:
         step_x, step_y = (maxx - minx) * 0.025, (maxy - miny) * 0.025
         neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=object),
                                                 np.array(mean_y + 2 * step_y - j * step_y, dtype=object))
-                                   for i in range(5)] for j in range(5)])
+                                   for i in range(5)] for j in range(5)]).flatten()
         return polygon, data_points, neuron_points
 
     def __Random_Points_in_Polygon(self, polygon):
@@ -87,8 +87,8 @@ class SOM:
         """
         xpolygon, ypolygon = self.polygon.exterior.xy
         xdata, ydata = [point.x for point in self.data_points], [point.y for point in self.data_points]
-        xneuron, yneuron = [point.x for point in self.neuron_points.flatten()], \
-                           [point.y for point in self.neuron_points.flatten()]
+        xneuron, yneuron = [point.x for point in self.neuron_points], \
+                           [point.y for point in self.neuron_points]
         return xpolygon.tolist(), ypolygon.tolist(), xdata, ydata, xneuron, yneuron
 
     def get_neurons(self):
