@@ -33,6 +33,7 @@ class MyPointClass:
 class SOM:
     """
     SOM model
+    :param radius: radius to find neurons'neighbors
     :param number_of_points: number of data points to generate
     :param shape: shape of the data, one of ['square', 'triangle', 'random']
 
@@ -41,9 +42,10 @@ class SOM:
     :var neuron_points: numpy array of size 5x5 with MyPointClass Object
     """
 
-    def __init__(self, number_of_points: int, shape: str = 'square'):
+    def __init__(self, radius: float, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
+        self.radius = np.sqrt(number_of_points)/2
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
 
     def __get_polygon_from_shape(self):
@@ -123,7 +125,18 @@ class SOM:
 
         plot(fig)
 
-    def move_closest_neuron(self, index):
+    def get_index_closest_neigbours(self, index):
+        """
+        :param index: index of the neuron
+        :return: indexes of neurons' closest at max radius distance
+        """
+        ...
+
+    def move_closest_neuron_and_neighbours(self, index):
+        """
+        move all neurons concerned
+        :param index: index of the actual closest neuron
+        """
         ...
 
     def fit(self):
