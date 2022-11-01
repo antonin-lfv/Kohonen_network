@@ -58,7 +58,7 @@ class SOM:
     def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = 0.5
+        self.radius = 0.15
         self.pourcent_distance_closest = 0.8
         self.pourcent_distance_closest_neighbors = 0.2
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
@@ -79,7 +79,7 @@ class SOM:
         data_points = self.__Random_Points_in_Polygon(polygon)
         minx, miny, maxx, maxy = polygon.bounds
         mean_x, mean_y = (minx + maxx) / 2, (miny + maxy) / 2
-        step_x, step_y = (maxx - minx) * 0.08, (maxy - miny) * 0.08
+        step_x, step_y = (maxx - minx) * 0.04, (maxy - miny) * 0.04
         neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=float),
                                                 np.array(mean_y + 2 * step_y - j * step_y, dtype=float))
                                    for i in range(6)] for j in range(6)]).flatten()
@@ -176,19 +176,20 @@ class SOM:
             self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data],
                                                                self.pourcent_distance_closest_neighbors)
 
-    def fit(self):
+    def fit(self, epochs: int = 100):
         """
         Run the model
         """
-        # We go through the input data
-        random.shuffle(self.data_points)
-        for index_input_data, input_data in enumerate(self.data_points):
-            # We find the closest neuron of the input data (index)
-            index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
-            # We move the closest neuron and its neighbours
-            self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data)
-            # We decrease the radius
-            self.radius *= 0.97
+        for _ in range(epochs):
+            # We go through the input data
+            random.shuffle(self.data_points)
+            for index_input_data, input_data in enumerate(self.data_points):
+                # We find the closest neuron of the input data (index)
+                index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
+                # We move the closest neuron and its neighbours
+                self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data)
+                # We decrease the radius
+            self.radius *= 0.7
 
 
 if __name__ == "__main__":
