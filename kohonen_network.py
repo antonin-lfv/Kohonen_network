@@ -4,6 +4,7 @@ from plotly.offline import plot
 from fastdist import fastdist
 import plotly.graph_objects as go
 import random
+import time
 
 
 class MyPointClass:
@@ -58,9 +59,9 @@ class SOM:
     def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = 0.15
+        self.radius = 0.2
         self.pourcent_distance_closest = 0.8
-        self.pourcent_distance_closest_neighbors = 0.2
+        self.pourcent_distance_closest_neighbors = 0.25
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
 
     def __get_polygon_from_shape(self):
@@ -82,7 +83,7 @@ class SOM:
         step_x, step_y = (maxx - minx) * 0.04, (maxy - miny) * 0.04
         neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=float),
                                                 np.array(mean_y + 2 * step_y - j * step_y, dtype=float))
-                                   for i in range(6)] for j in range(6)]).flatten()
+                                   for i in range(5)] for j in range(5)]).flatten()
         return polygon, data_points, neuron_points
 
     def __Random_Points_in_Polygon(self, polygon):
@@ -160,39 +161,42 @@ class SOM:
                     closest_neigbours.append(index_neuron)
         return closest_neigbours
 
-    def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data):
+    def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data, t):
         """
         move all neurons concerned
         :param index_input_data: index of the input data
         :param index_closest_neuron: index of the actual closest neuron
+        :param t: iteration
         """
         # first we find the neighbors of the neuron
         indexes = self.get_index_closest_neigbours(index_closest_neuron)
-        # We move the closest neuron to the input data with 0.80 of their distance
+        # We move the closest neuron to the input data with pourcent_distance_closest of their distance
         self.neuron_points[index_closest_neuron].move_to(self.data_points[index_input_data],
                                                          self.pourcent_distance_closest)
-        # We move the closest neurons of the closest neuron to the input data with 0.4 of their distance
+        # We move the closest neurons of the closest neuron to the input data with
+        # pourcent_distance_closest_neighbors of their distance
         for indexes_neigh_of_neigh in indexes:
-            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data],
-                                                               self.pourcent_distance_closest_neighbors)
+            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data], self.pourcent_distance_closest_neighbors)
 
     def fit(self, epochs: int = 100):
         """
         Run the model
         """
-        for _ in range(epochs):
+        for t in range(epochs):
             # We go through the input data
             random.shuffle(self.data_points)
             for index_input_data, input_data in enumerate(self.data_points):
                 # We find the closest neuron of the input data (index)
                 index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
                 # We move the closest neuron and its neighbours
-                self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data)
-                # We decrease the radius
-            self.radius *= 0.7
+                self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data, t)
+                self.display_data()
+                time.sleep(2)
+            # We decrease the radius
+            self.radius *= 0.95
 
 
 if __name__ == "__main__":
-    som_model = SOM(number_of_points=1000, shape='random')
+    som_model = SOM(number_of_points=1000, shape='square')
     som_model.fit()
     som_model.display_data()
