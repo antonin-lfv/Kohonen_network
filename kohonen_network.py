@@ -59,7 +59,7 @@ class SOM:
     def __init__(self, number_of_points: int, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = 0.2
+        self.radius = 0.1
         self.pourcent_distance_closest = 0.8
         self.pourcent_distance_closest_neighbors = 0.25
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
@@ -190,13 +190,13 @@ class SOM:
                 index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
                 # We move the closest neuron and its neighbours
                 self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data, t)
-                self.display_data()
-                time.sleep(2)
+                # self.display_data()
+                # time.sleep(2)
             # We decrease the radius
-            self.radius *= 0.95
+            self.radius *= 0.99
 
 
 if __name__ == "__main__":
-    som_model = SOM(number_of_points=1000, shape='square')
-    som_model.fit()
+    som_model = SOM(number_of_points=1000, shape='random')
+    som_model.fit(epochs=50)
     som_model.display_data()
