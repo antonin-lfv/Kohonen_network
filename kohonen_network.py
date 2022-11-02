@@ -11,6 +11,7 @@ class MyPointClass:
     """
     Custom Point class
     """
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -32,14 +33,25 @@ class MyPointClass:
                 closest_index, closest_distance = index, dist
         return closest_index
 
-    def move_to(self, neuron, scale):
+    def closest_move_to(self, data_point, alpha):
         """
-        Move the point to the neuron
-        :param scale: scale of the movement
-        :param neuron: neuron to move to
+        move the closest neuron
+        :param data_point: input data to move to
+        :param alpha: alpha term
         """
-        self.x += (neuron.x - self.x) * scale
-        self.y += (neuron.y - self.y) * scale
+        self.x = self.x + alpha * (data_point.x - self.x)
+        self.y = self.y + alpha * (data_point.y - self.y)
+
+    def neighbors_closest_move_to(self, data_point, sigma, alpha):
+        """
+        move the neighbors of the closest neuron
+        :param data_point: input data to move to
+        :param sigma: sigma term
+        :param alpha: alpha term
+        """
+        e_factor = np.exp(-((data_point.x - self.x) ** 2 + (data_point.y - self.y) ** 2) / (2 * sigma))
+        self.x = self.x + alpha * e_factor * (data_point.x - self.x)
+        self.y = self.y + alpha * e_factor * (data_point.y - self.y)
 
 
 class SOM:
@@ -47,21 +59,19 @@ class SOM:
     SOM model
     :param number_of_points: number of data points to generate
     :param shape: shape of the data, one of ['square', 'triangle', 'random']
+    :param N: to generate N^2 neurons
 
     :var polygon: Polygon Object, use to create data points
     :var data_points: list of MyPointClass Object
     :var neuron_points: 1-D numpy array with MyPointClass Object
     :var radius: radius to find neurons'neighbors
-    :var pourcent_distance_closest: how much the closest neuron move to the input
-    :var pourcent_distance_closest_neighbors: how much the neighbors of the closest neuron move to the input
     """
 
-    def __init__(self, number_of_points: int, shape: str = 'square'):
+    def __init__(self, number_of_points: int, N: int = 5, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
-        self.radius = 0.1
-        self.pourcent_distance_closest = 0.8
-        self.pourcent_distance_closest_neighbors = 0.25
+        self.N = N
+        self.radius = self.N / 2
         self.polygon, self.data_points, self.neuron_points = self.__get_polygon_from_shape()
 
     def __get_polygon_from_shape(self):
@@ -80,10 +90,10 @@ class SOM:
         data_points = self.__Random_Points_in_Polygon(polygon)
         minx, miny, maxx, maxy = polygon.bounds
         mean_x, mean_y = (minx + maxx) / 2, (miny + maxy) / 2
-        step_x, step_y = (maxx - minx) * 0.04, (maxy - miny) * 0.04
+        step_x, step_y = (maxx - minx) * 0.09, (maxy - miny) * 0.09
         neuron_points = np.array([[MyPointClass(np.array(mean_x - 2 * step_x + i * step_x, dtype=float),
                                                 np.array(mean_y + 2 * step_y - j * step_y, dtype=float))
-                                   for i in range(5)] for j in range(5)]).flatten()
+                                   for i in range(self.N)] for j in range(self.N)]).flatten()
         return polygon, data_points, neuron_points
 
     def __Random_Points_in_Polygon(self, polygon):
@@ -109,7 +119,7 @@ class SOM:
 
     def get_neurons(self):
         """
-        :return: 5x5 numpy array of neurons' points
+        :return: NxN numpy array of neurons' points
         """
         return self.neuron_points
 
@@ -161,42 +171,50 @@ class SOM:
                     closest_neigbours.append(index_neuron)
         return closest_neigbours
 
-    def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data, t):
+    def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data, t, sigma, alpha):
         """
         move all neurons concerned
+        :param alpha: alpha term
+        :param sigma: sigma term
         :param index_input_data: index of the input data
         :param index_closest_neuron: index of the actual closest neuron
         :param t: iteration
         """
         # first we find the neighbors of the neuron
         indexes = self.get_index_closest_neigbours(index_closest_neuron)
-        # We move the closest neuron to the input data with pourcent_distance_closest of their distance
-        self.neuron_points[index_closest_neuron].move_to(self.data_points[index_input_data],
-                                                         self.pourcent_distance_closest)
-        # We move the closest neurons of the closest neuron to the input data with
-        # pourcent_distance_closest_neighbors of their distance
+        # move the closest
+        self.neuron_points[index_closest_neuron].closest_move_to(self.data_points[index_input_data], alpha)
+        # move the neighbors
         for indexes_neigh_of_neigh in indexes:
-            self.neuron_points[indexes_neigh_of_neigh].move_to(self.data_points[index_input_data], self.pourcent_distance_closest_neighbors)
+            self.neuron_points[indexes_neigh_of_neigh].neighbors_closest_move_to(self.data_points[index_input_data],
+                                                                                 sigma, alpha)
 
-    def fit(self, epochs: int = 100):
+    def fit(self, epochs: int = 100, debug: bool = False):
         """
         Run the model
         """
-        for t in range(epochs):
+        alpha_init = 0.9
+        sigma_init = 0.25
+        random.shuffle(self.data_points)
+        assert epochs > 1, print("epochs must be > 1")
+        for t in range(1, epochs):
+            # update parameters
+            alpha = alpha_init * (1 - t / epochs)
+            sigma = sigma_init * (1 - t / epochs)
+            self.radius = round(self.radius * (1 - t / epochs))
             # We go through the input data
-            random.shuffle(self.data_points)
             for index_input_data, input_data in enumerate(self.data_points):
                 # We find the closest neuron of the input data (index)
                 index_closest_neuron_of_input = input_data.get_closest(neurons=self.neuron_points)
                 # We move the closest neuron and its neighbours
-                self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data, t)
-                # self.display_data()
-                # time.sleep(2)
-            # We decrease the radius
-            self.radius *= 0.99
+                self.move_closest_neuron_and_neighbours(index_closest_neuron_of_input, index_input_data, t, sigma,
+                                                        alpha)
+                if debug:
+                    self.display_data()
+                    time.sleep(0.5)
 
 
 if __name__ == "__main__":
-    som_model = SOM(number_of_points=1000, shape='random')
-    som_model.fit(epochs=50)
+    som_model = SOM(number_of_points=500, shape='square')
+    som_model.fit(epochs=2, debug=False)
     som_model.display_data()
