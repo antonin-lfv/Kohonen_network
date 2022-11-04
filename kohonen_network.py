@@ -37,7 +37,7 @@ class MyPointClass:
         """
         move the closest neuron
         :param data_point: input data to move to
-        :param alpha: alpha term
+        :param learning_rate: learning rate of the model
         """
         self.x += learning_rate * (data_point.x - self.x)
         self.y += learning_rate * (data_point.y - self.y)
@@ -45,9 +45,8 @@ class MyPointClass:
     def neighbors_closest_move_to(self, data_point, learning_rate):
         """
         move the neighbors of the closest neuron
+        :param learning_rate: learning rate of the model
         :param data_point: input data to move to
-        :param sigma: sigma term
-        :param alpha: alpha term
         """
         e_factor = np.exp(-((data_point.x - self.x) ** 2 + (data_point.y - self.y) ** 2) / (2 * learning_rate))
         self.x += learning_rate * e_factor * (data_point.x - self.x)
@@ -175,11 +174,8 @@ class SOM:
     def move_closest_neuron_and_neighbours(self, index_closest_neuron, index_input_data):
         """
         move all neurons concerned
-        :param alpha: alpha term
-        :param sigma: sigma term
         :param index_input_data: index of the input data
         :param index_closest_neuron: index of the actual closest neuron
-        :param t: iteration
         """
         # first we find the neighbors of the neuron
         indexes = self.get_index_closest_neigbours(index_closest_neuron)
@@ -212,6 +208,6 @@ class SOM:
 
 
 if __name__ == "__main__":
-    som_model = SOM(number_of_points=1000, shape='square')
+    som_model = SOM(number_of_points=1000, shape='triangle')
     som_model.fit(epochs=100, debug=False)
     som_model.display_data()
