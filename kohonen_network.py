@@ -59,6 +59,7 @@ class SOM:
     :param number_of_points: number of data points to generate
     :param shape: shape of the data, one of ['square', 'triangle', 'random']
     :param N: to generate N^2 neurons
+    :param learning_rate: power of reconcile
 
     :var polygon: Polygon Object, use to create data points
     :var data_points: list of MyPointClass Object
@@ -66,7 +67,7 @@ class SOM:
     :var radius: radius to find neurons'neighbors
     """
 
-    def __init__(self, number_of_points: int, learning_rate: float = 0.3, N: int = 5, shape: str = 'square'):
+    def __init__(self, *, number_of_points: int, learning_rate: float = 0.2, N: int = 5, shape: str = 'square'):
         self.number_of_points = number_of_points
         self.shape = shape
         self.N = N
@@ -112,10 +113,11 @@ class SOM:
         :return: xpolygon, ypolygon,xdata, ydata as python lists
         """
         xpolygon, ypolygon = self.polygon.exterior.xy
+        polygon_points_index_to_display = [i for i in range(self.N**2)]
         xdata, ydata = [point.x for point in self.data_points], [point.y for point in self.data_points]
         xneuron, yneuron = [point.x for point in self.neuron_points], \
                            [point.y for point in self.neuron_points]
-        return xpolygon.tolist(), ypolygon.tolist(), xdata, ydata, xneuron, yneuron
+        return xpolygon.tolist(), ypolygon.tolist(), xdata, ydata, xneuron, yneuron, polygon_points_index_to_display
 
     def get_neurons(self):
         """
@@ -124,7 +126,7 @@ class SOM:
         return self.neuron_points
 
     def display_data(self, display_shape=False):
-        xpolygon, ypolygon, xdata, ydata, xneuron, yneuron = self.get_all_data()
+        xpolygon, ypolygon, xdata, ydata, xneuron, yneuron, polygon_points_index_to_display = self.get_all_data()
         fig = go.Figure()
         # Plot the polygon
         if display_shape:
@@ -143,8 +145,8 @@ class SOM:
                         marker=dict(color='red',
                                     size=10,
                                     opacity=1),
-                        text=[i for i in range(len(xneuron))],
-                        texttemplate="%{text}",
+                        text=polygon_points_index_to_display,
+                        texttemplate="neurone numéro %{text}",
                         name="Neurons")
         # TODO Plot the line between neurons
         # Plot the list of points
@@ -208,6 +210,8 @@ class SOM:
 
 
 if __name__ == "__main__":
-    som_model = SOM(number_of_points=1000, shape='triangle')
-    som_model.fit(epochs=100, debug=False)
+    print("Début de l'algorithme ...")
+    som_model = SOM(number_of_points=1200, shape='square', learning_rate=0.75, N=3)
+    som_model.fit(epochs=400, debug=False)
+    print("Terminé !")
     som_model.display_data()
